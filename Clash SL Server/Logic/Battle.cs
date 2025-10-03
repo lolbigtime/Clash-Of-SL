@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using UCS.Logic.JSONProperty;
 using UCS.Logic.JSONProperty.Item;
 using UCS.Core;
+using CSS.Files.Logic;
 
 namespace UCS.Logic
 {
@@ -408,6 +409,42 @@ namespace UCS.Logic
             internal int Y;
 
             internal bool HasInstanceId => InstanceId > 0;
+        }
+
+        internal void EvaluateOutcome()
+        {
+            var buildingsByInstance = new Dictionary<int, JObject>();
+
+            if (this.Base != null && this.Base.TryGetValue("buildings", out var buildingsToken) &&
+                buildingsToken is JArray buildingArray)
+            {
+                foreach (var buildingToken in buildingArray.OfType<JObject>())
+                {
+                    if (!buildingToken.TryGetValue("id", out var idToken))
+                        continue;
+
+                    var buildingGlobalId = idToken.Value<int>();
+                    var buildingInstanceId = GlobalID.GetInstanceID(buildingGlobalId);
+                    buildingsByInstance[buildingInstanceId] = buildingToken;
+                }
+            }
+
+            foreach (var command in this.Commands)
+            {
+                var commandClassId = GlobalID.GetClassID(command.Command_Base.Data);
+
+                switch (commandClassId)
+                {
+                    case 500:
+                        var buildingInstanceId = GlobalID.GetInstanceID(command.Command_Base.Data);
+
+                        if (buildingsByInstance.TryGetValue(buildingInstanceId, out var building))
+                        {
+                            building["destroyed"] = true;
+                        }
+                        break;
+                }
+            }
         }
     }
 }
