@@ -417,6 +417,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Simulation\BatchAttackOptions.cs" />
     <Compile Include="Simulation\BatchAttackRunner.cs" />
+    <Compile Include="Simulation\BatchAttackCore.cs" />
     <Compile Include="CSSUI.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -1343,6 +1344,7 @@
     <Compile Include="Logic\Alliance.cs" />
     <Compile Include="Core\ObjectManager.cs" />
     <Compile Include="Simulation\BatchAttackRunner.cs" />
+    <Compile Include="Simulation\BatchAttackCore.cs" />
     <Compile Include="Simulation\RLBattlePipeline.cs" />
   </ItemGroup>
   <ItemGroup>
