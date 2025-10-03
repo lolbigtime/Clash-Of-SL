@@ -1340,6 +1340,8 @@
     <Compile Include="Packets\Messages\Client\PromoteAllianceMemberMessage.cs" />
     <Compile Include="Logic\Alliance.cs" />
     <Compile Include="Core\ObjectManager.cs" />
+    <Compile Include="Simulation\BatchAttackRunner.cs" />
+    <Compile Include="Simulation\RLBattlePipeline.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Tools\patch_generator.bat">
