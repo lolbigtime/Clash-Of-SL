@@ -22,8 +22,13 @@ namespace CSS
         public static Stopwatch _Stopwatch = new Stopwatch();
         public static string Version { get; set; }
 
-        internal static void Main()
+        internal static void Main(string[] args)
         {
+            if (CSS.Simulation.BatchAttackRunner.TryRun(args))
+            {
+                return;
+            }
+
             int GWL_EXSTYLE = -20;
             int WS_EX_LAYERED = 0x80000;
             uint LWA_ALPHA = 0x2;

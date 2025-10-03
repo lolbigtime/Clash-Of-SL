@@ -415,6 +415,8 @@
     <Compile Include="Packets\Messages\Server\PromoteAllianceMemberOkMessage.cs" />
     <Compile Include="Packets\Messages\Server\ReplayDataMessage.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="Simulation\BatchAttackOptions.cs" />
+    <Compile Include="Simulation\BatchAttackRunner.cs" />
     <Compile Include="CSSUI.cs">
       <SubType>Form</SubType>
     </Compile>
