@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 
@@ -7,7 +8,9 @@ using System.Windows;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Sky Production")]
 [assembly: AssemblyProduct("Clash SL Server")]
-[assembly: AssemblyCopyright("Copyright ©  2024")]
+
+[assembly: InternalsVisibleTo("Clash SL Server.Tests")]
+[assembly: AssemblyCopyright("Copyright Â©  2024")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 [assembly: ComVisible(true)]

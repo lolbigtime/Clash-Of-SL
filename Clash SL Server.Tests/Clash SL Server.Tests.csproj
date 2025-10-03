@@ -11,6 +11,8 @@
     <Compile Include="..\Clash SL Server\Logic\JSONProperty\Item\Battle_Commands.cs" Link="Server/Logic/JSONProperty/Item/Battle_Commands.cs" />
     <Compile Include="..\Clash SL Server\Logic\JSONProperty\Slot.cs" Link="Server/Logic/JSONProperty/Slot.cs" />
     <Compile Include="..\Clash SL Server\Files\Logic\GlobalID.cs" Link="Server/Files/Logic/GlobalID.cs" />
+    <Compile Include="..\Clash SL Server\Simulation\BatchAttackCore.cs" Link="Server/Simulation/BatchAttackCore.cs" />
+    <Compile Include="..\Clash SL Server\Simulation\RLBattlePipeline.cs" Link="Server/Simulation/RLBattlePipeline.cs" />
   </ItemGroup>
 
   <ItemGroup>
