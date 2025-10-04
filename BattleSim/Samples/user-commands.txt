@@ -1,0 +1,6 @@
+# Sample commands for the interactive BattleSim runner
+# Format: tick dataId x y
+63 1000001 56 38
+126 1000002 47 49
+189 1000000 40 42
+252 500000001 50 40
