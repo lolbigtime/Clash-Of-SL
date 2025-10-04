@@ -2,7 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 
-namespace CSS.Simulation
+namespace UCS.Simulation
 {
     internal sealed class BatchAttackOptions
     {

@@ -276,6 +276,7 @@
       <DependentUpon>CSSdb.edmx</DependentUpon>
     </Compile>
     <Compile Include="Helpers\Binary\Reader.cs" />
+    <Compile Include="Helpers\BattleSerializers.cs" />
     <Compile Include="Helpers\List\Writter.cs" />
     <Compile Include="Logic\API\FacebookApi.cs" />
     <Compile Include="Logic\ClanWars.cs" />
@@ -283,6 +284,9 @@
     <Compile Include="Logic\Enums\Exits.cs" />
     <Compile Include="Logic\Enums\Save.cs" />
     <Compile Include="Logic\Enums\State.cs" />
+    <Compile Include="Logic\JSONProperty\Replay_Info.cs" />
+    <Compile Include="Logic\JSONProperty\Replay_Stats.cs" />
+    <Compile Include="Logic\JSONProperty\Item\Battle_Commands.cs" />
     <Compile Include="Logic\StreamEntry\ChallengeStreamEntry.cs" />
     <Compile Include="Packets\Commands\Client\CastSpellCommand.cs" />
     <Compile Include="Packets\Commands\Client\PlaceAllianceTroopsCommand.cs" />
@@ -416,8 +420,6 @@
     <Compile Include="Packets\Messages\Server\ReplayDataMessage.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Simulation\BatchAttackOptions.cs" />
-    <Compile Include="Simulation\BatchAttackRunner.cs" />
-    <Compile Include="Simulation\BatchAttackCore.cs" />
     <Compile Include="CSSUI.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -1341,6 +1343,7 @@
     <Compile Include="Packets\Messages\Server\GlobalChatLineMessage.cs" />
     <Compile Include="Logic\StreamEntry\ChatStreamEntry.cs" />
     <Compile Include="Packets\Messages\Client\PromoteAllianceMemberMessage.cs" />
+    <Compile Include="Logic\Battle.cs" />
     <Compile Include="Logic\Alliance.cs" />
     <Compile Include="Core\ObjectManager.cs" />
     <Compile Include="Simulation\BatchAttackRunner.cs" />
