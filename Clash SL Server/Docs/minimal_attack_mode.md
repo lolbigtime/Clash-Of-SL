@@ -124,10 +124,11 @@ Key entry points:
   heavily weights stars, adds linear destruction credit, and slightly rewards
   faster clears. Implement `IRLBattlePolicy` yourself if you prefer advantage
   signals, curriculum shaping, etc.
-* **`RLBattlePipeline.Demo`** – accepts `(Battle battle, IEnumerable<Battle_Command>
-  seed)` tuples, primes the policy via `WarmStart`, and runs the episodes. It’s a
-  convenient entry point when you want to bootstrap from existing replay
-  commands without writing plumbing code.
+* **`RLBattlePipeline.Demo`** – accepts an `IEnumerable<RLEpisodeSeed>` (each seed
+  wraps a `Battle` plus optional `IEnumerable<Battle_Command>`), primes the
+  policy via `WarmStart`, and runs the episodes. It’s a convenient entry point
+  when you want to bootstrap from existing replay commands without writing
+  plumbing code.
 
 Because the pipeline resets command/replay state for every work item, you can
 reuse attacker/defender snapshots (or even memoized `Level` objects) when
