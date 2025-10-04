@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 using UCS.Logic;
 using UCS.Logic.JSONProperty;
 
-namespace UCS.Helpers
+namespace CSS.Helpers
 {
     internal static class BattleSerializers
     {
