@@ -1,18 +1,22 @@
 using System.Collections.Generic;
 using System.Linq;
+using CSS.Helpers;
 using UCS.Logic;
 using UCS.Logic.JSONProperty;
 using UCS.Logic.JSONProperty.Item;
 
 namespace UCS.Simulation
 {
-    internal class BatchAttackRunner
+    internal partial class BatchAttackRunner
     {
         internal virtual IEnumerable<BatchAttackResult> Run(
             IEnumerable<BatchAttackWorkItem> workItems,
             BatchAttackRunnerOptions options = null)
         {
-            options ??= BatchAttackRunnerOptions.Default;
+            if (options == null)
+            {
+                options = BatchAttackRunnerOptions.Default;
+            }
 
             var results = new List<BatchAttackResult>();
 
@@ -117,7 +121,10 @@ namespace UCS.Simulation
 
     internal class BatchAttackRunnerOptions
     {
-        internal static BatchAttackRunnerOptions Default => new BatchAttackRunnerOptions();
+        internal static BatchAttackRunnerOptions Default
+        {
+            get { return new BatchAttackRunnerOptions(); }
+        }
 
         internal bool ResetBattleCommands { get; set; } = true;
 
