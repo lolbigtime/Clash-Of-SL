@@ -123,7 +123,9 @@ namespace UCS.Simulation
                     case "--attacks":
                     case "--repeat":
                         {
-                            if (!TryReadValue(args, ref i, out string value, out error))
+                            string value;
+
+                            if (!TryReadValue(args, ref i, out value, out error))
                             {
                                 return requested;
                             }
@@ -141,7 +143,9 @@ namespace UCS.Simulation
                     case "--prep":
                     case "--preparation":
                         {
-                            if (!TryReadValue(args, ref i, out string value, out error))
+                            string value;
+
+                            if (!TryReadValue(args, ref i, out value, out error))
                             {
                                 return requested;
                             }
@@ -159,7 +163,9 @@ namespace UCS.Simulation
                     case "--attack-time":
                     case "--attack":
                         {
-                            if (!TryReadValue(args, ref i, out string value, out error))
+                            string value;
+
+                            if (!TryReadValue(args, ref i, out value, out error))
                             {
                                 return requested;
                             }
@@ -188,18 +194,22 @@ namespace UCS.Simulation
                         break;
 
                     case "--seed":
-                        if (!TryReadValue(args, ref i, out string seedValue, out error))
                         {
-                            return requested;
-                        }
+                            string seedValue;
 
-                        if (!long.TryParse(seedValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out battleSeed))
-                        {
-                            error = "--seed must be a valid integer.";
-                            return requested;
-                        }
+                            if (!TryReadValue(args, ref i, out seedValue, out error))
+                            {
+                                return requested;
+                            }
 
-                        break;
+                            if (!long.TryParse(seedValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out battleSeed))
+                            {
+                                error = "--seed must be a valid integer.";
+                                return requested;
+                            }
+
+                            break;
+                        }
 
                     default:
                         break;

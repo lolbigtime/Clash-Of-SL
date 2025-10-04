@@ -16,7 +16,10 @@ namespace UCS.Simulation
     {
         internal static bool TryRun(string[] args)
         {
-            bool parseResult = BatchAttackOptions.TryParse(args, out BatchAttackOptions options, out string error);
+            BatchAttackOptions options;
+            string error;
+
+            bool parseResult = BatchAttackOptions.TryParse(args, out options, out error);
 
             if (!parseResult)
             {
