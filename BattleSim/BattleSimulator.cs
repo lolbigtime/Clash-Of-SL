@@ -49,8 +49,7 @@ namespace ClashOfSL.BattleSim
 
             if (commandList.Count > 0)
             {
-                var lastCommand = commandList[commandList.Count - 1];
-                AdvanceClock(ref preparationTime, ref attackTime, ref lastTick, lastCommand.Tick, processed);
+                AdvanceClock(ref preparationTime, ref attackTime, ref lastTick, commandList[^1].Tick, processed);
             }
 
             return CreateResult(snapshots, preparationTime, attackTime, lastTick);
