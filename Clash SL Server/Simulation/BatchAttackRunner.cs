@@ -13,7 +13,7 @@ using UCS.Logic.JSONProperty.Item;
 
 namespace UCS.Simulation
 {
-    internal static class BatchAttackRunner
+    internal partial class BatchAttackRunner
     {
         internal static bool TryRun(string[] args)
         {
@@ -52,6 +52,15 @@ namespace UCS.Simulation
             }
 
             TextWriter outputWriter = null;
+            var runner = new BatchAttackRunner();
+            var runnerOptions = new BatchAttackRunnerOptions
+            {
+                ResetBattleCommands = true,
+                ResetReplayInfo = true,
+                PopulateReplayInfo = options.IncludeReplay || options.IncludeBattleState,
+                SerializePayloads = options.IncludeReplay || options.IncludeBattleState,
+                SuppressTickLogging = true
+            };
 
             try
             {
@@ -66,14 +75,15 @@ namespace UCS.Simulation
 
                     Battle battle = CreateBattle(baseLayoutJson, attackerLayoutJson, options, attackIndex);
 
-                    foreach (Battle_Command command in commands)
+                    BatchAttackWorkItem workItem = new BatchAttackWorkItem(battle, commands);
+                    BatchAttackResult simulation = runner.Run(new[] { workItem }, runnerOptions).FirstOrDefault();
+
+                    if (simulation == null)
                     {
-                        battle.Add_Command(command);
+                        continue;
                     }
 
-                    battle.Set_Replay_Info();
-
-                    JObject result = BuildResult(battle, attackIndex, commands.Count, options.IncludeBattleState, options.IncludeReplay);
+                    JObject result = BuildResult(simulation, attackIndex, commands.Count, options.IncludeBattleState, options.IncludeReplay);
 
                     string serialized = result.ToString(Formatting.None);
 
@@ -112,26 +122,28 @@ namespace UCS.Simulation
             return battle;
         }
 
-        private static JObject BuildResult(Battle battle, int attackIndex, int commandCount, bool includeBattleState, bool includeReplay)
+        private static JObject BuildResult(BatchAttackResult simulation, int attackIndex, int commandCount, bool includeBattleState, bool includeReplay)
         {
+            Battle battle = simulation.Battle;
+
             JObject result = new JObject
             {
                 ["attackIndex"] = attackIndex,
                 ["commandCount"] = commandCount,
-                ["preparationTimeRemaining"] = battle.Preparation_Time,
-                ["attackTimeRemaining"] = battle.Attack_Time,
-                ["battleId"] = battle.Battle_ID
+                ["preparationTimeRemaining"] = battle?.Preparation_Time ?? 0,
+                ["attackTimeRemaining"] = battle?.Attack_Time ?? 0,
+                ["battleId"] = battle?.Battle_ID ?? 0
             };
 
             if (includeReplay)
             {
-                string replayJson = BattleSerializers.Serialize(battle.Replay_Info);
+                string replayJson = simulation.ReplayJson ?? (battle != null ? BattleSerializers.Serialize(battle.Replay_Info) : string.Empty);
                 result["replay"] = replayJson.Length > 0 ? JToken.Parse(replayJson) : new JObject();
             }
 
             if (includeBattleState)
             {
-                string battleJson = BattleSerializers.Serialize(battle);
+                string battleJson = simulation.BattleJson ?? (battle != null ? BattleSerializers.Serialize(battle) : string.Empty);
                 result["battle"] = battleJson.Length > 0 ? JToken.Parse(battleJson) : new JObject();
             }
 

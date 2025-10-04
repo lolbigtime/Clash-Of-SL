@@ -7,7 +7,7 @@ using UCS.Logic.JSONProperty.Item;
 
 namespace UCS.Simulation
 {
-    internal class BatchAttackRunner
+    internal partial class BatchAttackRunner
     {
         internal virtual IEnumerable<BatchAttackResult> Run(
             IEnumerable<BatchAttackWorkItem> workItems,
