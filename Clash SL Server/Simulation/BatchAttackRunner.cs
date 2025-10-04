@@ -1,18 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using CSS.Core;
 using CSS.Logic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
-using System.Linq;
 using UCS.Helpers;
 using UCS.Logic;
 using UCS.Logic.JSONProperty;
 using UCS.Logic.JSONProperty.Item;
 
-namespace CSS.Simulation
+namespace UCS.Simulation
 {
     internal static class BatchAttackRunner
     {

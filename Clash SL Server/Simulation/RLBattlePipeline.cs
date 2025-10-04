@@ -80,7 +80,7 @@ namespace UCS.Simulation
             return episodeResults;
         }
 
-        internal static IEnumerable<RLEpisodeResult> Demo(IRLBattlePolicy policy, IEnumerable<(Battle battle, IEnumerable<Battle_Command> seed)> episodes)
+        internal static IEnumerable<RLEpisodeResult> Demo(IRLBattlePolicy policy, IEnumerable<RLEpisodeSeed> episodes)
         {
             if (episodes == null)
             {
@@ -90,16 +90,16 @@ namespace UCS.Simulation
             var pipeline = new RLBattlePipeline();
             var battles = new List<Battle>();
 
-            foreach ((Battle battle, IEnumerable<Battle_Command> seed) episode in episodes)
+            foreach (RLEpisodeSeed episode in episodes)
             {
-                if (episode.battle == null)
+                if (episode == null || episode.Battle == null)
                 {
                     continue;
                 }
 
-                IEnumerable<Battle_Command> candidateCommands = episode.seed ?? Enumerable.Empty<Battle_Command>();
-                policy.WarmStart(episode.battle, candidateCommands);
-                battles.Add(episode.battle);
+                IEnumerable<Battle_Command> candidateCommands = episode.SeedCommands ?? Enumerable.Empty<Battle_Command>();
+                policy.WarmStart(episode.Battle, candidateCommands);
+                battles.Add(episode.Battle);
             }
 
             return pipeline.RunEpisodes(battles, policy);
@@ -173,7 +173,9 @@ namespace UCS.Simulation
 
         public void WarmStart(Battle battle, IEnumerable<Battle_Command> seedCommands)
         {
-            if (this.commandGenerator is ISeedableBattleCommandGenerator seedable && battle != null)
+            ISeedableBattleCommandGenerator seedable = this.commandGenerator as ISeedableBattleCommandGenerator;
+
+            if (seedable != null && battle != null)
             {
                 seedable.Seed(battle, seedCommands);
             }
@@ -282,5 +284,18 @@ namespace UCS.Simulation
         internal BatchAttackResult Simulation { get; }
 
         internal double Reward { get; }
+    }
+
+    internal class RLEpisodeSeed
+    {
+        internal RLEpisodeSeed(Battle battle, IEnumerable<Battle_Command> seedCommands)
+        {
+            this.Battle = battle;
+            this.SeedCommands = seedCommands;
+        }
+
+        internal Battle Battle { get; }
+
+        internal IEnumerable<Battle_Command> SeedCommands { get; }
     }
 }

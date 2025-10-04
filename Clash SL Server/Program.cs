@@ -11,6 +11,7 @@ using CSS.Core.Threading;
 using CSS.Core.Web;
 using CSS.Helpers;
 using CSS.WebAPI;
+using UCS.Simulation;
 using static CSS.Core.Logger;
 
 namespace CSS
@@ -24,7 +25,7 @@ namespace CSS
 
         internal static void Main(string[] args)
         {
-            if (CSS.Simulation.BatchAttackRunner.TryRun(args))
+            if (BatchAttackRunner.TryRun(args))
             {
                 return;
             }
