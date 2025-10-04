@@ -56,3 +56,26 @@ You may find the following links useful!
 - [Redis Server](https://redis.io/download)
 
 - [Latest CSS Release](https://github.com/skyprolk/Clash-Of-SL/releases/)
+
+## Server bootstrap script
+
+Running the server requires Mono/.NET tooling, MySQL, Redis and a pre-populated `cssdb` schema. On fresh Debian or Ubuntu machines you can automate the full setup by running:
+
+```bash
+git clone https://github.com/skyprolk/Clash-Of-SL.git
+cd Clash-Of-SL
+sudo ./scripts/setup_css_server.sh
+```
+
+The helper installs the required apt packages (`mono-complete`, `msbuild`, `nuget`, `mysql-server`, `redis-server`, `screen`, `unzip`), creates the `cssdb` database with a `CSS/ClashOfSL!2024` account, and imports `Clash SL Server/Tools/CSSdb.sql`. Environment variables let you override the defaults:
+
+```bash
+CSS_DB_PASSWORD="MySecret" CSS_DB_NAME="cssdb" CSS_DB_USER="CSS" sudo ./scripts/setup_css_server.sh
+```
+
+After the script finishes you can build and launch the server with Mono:
+
+```bash
+msbuild "Clash SL Server/Clash SL Server.csproj"
+mono "Clash SL Server/bin/Debug/Clash SL Server.exe"
+```

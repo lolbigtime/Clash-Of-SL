@@ -57,9 +57,9 @@
   <!-- MySql IP Address -->
   <add key="MysqlPort" value="3306" />
   <!-- MySql Username -->
-  <add key="MysqlUsername" value="root" />
+  <add key="MysqlUsername" value="CSS" />
   <!-- MySql Username -->
-  <add key="MysqlPassword" value="" />
+  <add key="MysqlPassword" value="ClashOfSL!2024" />
   <!--  MySql server password-->
   <add key="MysqlDatabase" value="cssdb" />
   <!--  Redis server password-->
