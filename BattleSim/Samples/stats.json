@@ -1,0 +1,24 @@
+{
+  "buildings": [
+    {
+      "dataId": 1000000,
+      "isTownHall": true,
+      "hitpoints": { "1": 4500 }
+    },
+    {
+      "dataId": 1000001,
+      "isTownHall": false,
+      "hitpoints": { "1": 900 }
+    },
+    {
+      "dataId": 1000002,
+      "isTownHall": false,
+      "hitpoints": { "1": 800 }
+    },
+    {
+      "dataId": 500000001,
+      "isTownHall": false,
+      "defaultHitpoints": 200
+    }
+  ]
+}
