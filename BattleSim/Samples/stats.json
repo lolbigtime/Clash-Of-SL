@@ -20,5 +20,17 @@
       "isTownHall": false,
       "defaultHitpoints": 200
     }
+  ],
+  "troops": [
+    {
+      "dataId": 4000000,
+      "hitpoints": 3100,
+      "damagePerSecond": 340,
+      "moveSpeed": 16,
+      "attackRange": 0.8,
+      "isFlying": true,
+      "preferredTargetDataIds": [1000000],
+      "preferredTargetMultiplier": 2.0
+    }
   ]
 }
