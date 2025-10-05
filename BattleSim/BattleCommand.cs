@@ -4,8 +4,9 @@ namespace ClashOfSL.BattleSim
 {
     /// <summary>
     ///     Represents a single battle action that can be replayed inside the
-    ///     deterministic simulator. A command typically corresponds to a troop
-    ///     placement or spell drop at a given world coordinate.
+    ///     deterministic simulator. A command corresponds to the encoded drop from
+    ///     the Clash replay stream (for example, a building strike or hero ability)
+    ///     at a given world coordinate.
     /// </summary>
     public sealed class BattleCommand
     {

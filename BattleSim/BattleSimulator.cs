@@ -8,7 +8,6 @@ namespace ClashOfSL.BattleSim
     {
         readonly BattleLayout layout;
         readonly BattleSimulationOptions options;
-
         public BattleSimulator(BattleLayout layout, BattleSimulationOptions? options = null)
         {
             this.layout = layout ?? throw new ArgumentNullException(nameof(layout));
@@ -25,65 +24,182 @@ namespace ClashOfSL.BattleSim
 
             double preparationTime = this.options.PreparationTime;
             double attackTime = this.options.AttackTime;
-            double lastTick = 0;
-            int processed = 0;
 
-            List<BuildingSnapshot> snapshots = this.layout.Buildings
+            var snapshots = this.layout.Buildings
                 .Select(b => new BuildingSnapshot(b))
                 .ToList();
 
-            Dictionary<int, List<BuildingSnapshot>> buildingBuckets = snapshots
+            var buildingBuckets = snapshots
                 .GroupBy(b => b.DataId)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
-            Dictionary<int, BuildingSnapshot> buildingsByInstance = snapshots
+            var buildingsByInstance = snapshots
                 .Where(b => b.HasInstanceId)
                 .ToDictionary(b => b.InstanceId, b => b);
 
+            var troops = new List<TroopInstance>();
+
+            double currentTick = 0;
+
             foreach (BattleCommand command in commandList)
             {
-                AdvanceClock(ref preparationTime, ref attackTime, ref lastTick, command.Tick, processed);
-                processed++;
-                ApplyCommand(command, buildingBuckets, buildingsByInstance);
+                if (!HasRemainingBuildings(snapshots))
+                {
+                    break;
+                }
+
+                double targetTick = Math.Max(0, command.Tick);
+                double deltaTicks = targetTick - currentTick;
+
+                if (deltaTicks > 0)
+                {
+                    double advanced = AdvanceTime(
+                        snapshots,
+                        troops,
+                        deltaTicks,
+                        ref preparationTime,
+                        ref attackTime,
+                        this.options);
+
+                    currentTick += advanced;
+
+                    if (advanced + 1e-6 < deltaTicks)
+                    {
+                        // Battle finished before reaching this command.
+                        break;
+                    }
+                }
+
+                currentTick = targetTick;
+
+                ApplyCommand(
+                    command,
+                    snapshots,
+                    troops,
+                    buildingBuckets,
+                    buildingsByInstance,
+                    this.options);
             }
 
-            return CreateResult(snapshots, preparationTime, attackTime, lastTick);
+            if (HasRemainingBuildings(snapshots) && HasAliveTroops(troops) && attackTime > 0)
+            {
+                double consumed = TickTroops(
+                    troops,
+                    snapshots,
+                    Math.Max(0, attackTime),
+                    this.options);
+
+                attackTime -= consumed;
+                currentTick += consumed * 63.0;
+            }
+
+            if (currentTick < 0)
+            {
+                currentTick = 0;
+            }
+
+            preparationTime = Math.Max(0, preparationTime);
+            attackTime = Math.Max(0, attackTime);
+
+            int endTick = (int)Math.Round(currentTick);
+
+            return CreateResult(snapshots, preparationTime, attackTime, endTick);
         }
 
-        static void AdvanceClock(ref double prep, ref double attack, ref double lastTick, int targetTick, int processedCommands)
+        static double AdvanceTime(
+            List<BuildingSnapshot> buildings,
+            List<TroopInstance> troops,
+            double deltaTicks,
+            ref double preparationTime,
+            ref double attackTime,
+            BattleSimulationOptions options)
         {
-            if (targetTick <= lastTick)
+            double ticksRemaining = deltaTicks;
+            double processedTicks = 0;
+
+            if (ticksRemaining <= 0)
             {
-                return;
+                return 0;
             }
 
-            double delta = targetTick - lastTick;
-            lastTick = targetTick;
-
-            if (prep > 0 && processedCommands == 0)
+            while (ticksRemaining > 1e-6)
             {
-                prep -= delta / 63.0;
-                if (prep < 0)
+                if (!HasRemainingBuildings(buildings))
                 {
-                    attack += prep;
-                    prep = 0;
+                    break;
+                }
+
+                double secondsRemaining = ticksRemaining / 63.0;
+
+                if (preparationTime > 0)
+                {
+                    double prepSeconds = Math.Min(preparationTime, secondsRemaining);
+                    preparationTime -= prepSeconds;
+                    ticksRemaining -= prepSeconds * 63.0;
+                    processedTicks += prepSeconds * 63.0;
+
+                    if (prepSeconds + 1e-6 < secondsRemaining)
+                    {
+                        continue;
+                    }
+
+                    break;
+                }
+
+                if (attackTime <= 1e-6)
+                {
+                    break;
+                }
+
+                double attackSeconds = Math.Min(attackTime, secondsRemaining);
+
+                if (attackSeconds <= 0)
+                {
+                    break;
+                }
+
+                if (HasAliveTroops(troops))
+                {
+                    double consumed = TickTroops(
+                        troops,
+                        buildings,
+                        attackSeconds,
+                        options);
+
+                    attackTime -= consumed;
+                    ticksRemaining -= consumed * 63.0;
+                    processedTicks += consumed * 63.0;
+
+                    if (consumed + 1e-6 < attackSeconds)
+                    {
+                        break;
+                    }
+                }
+                else
+                {
+                    attackTime -= attackSeconds;
+                    ticksRemaining -= attackSeconds * 63.0;
+                    processedTicks += attackSeconds * 63.0;
+                }
+
+                if (attackSeconds + 1e-6 < secondsRemaining)
+                {
+                    break;
                 }
             }
-            else
-            {
-                attack -= delta / 63.0;
-            }
 
-            if (attack < 0)
-            {
-                attack = 0;
-            }
+            attackTime = Math.Max(0, attackTime);
+
+            return processedTicks;
         }
 
         static void ApplyCommand(
             BattleCommand command,
+            List<BuildingSnapshot> snapshots,
+            List<TroopInstance> troops,
             Dictionary<int, List<BuildingSnapshot>> buckets,
-            Dictionary<int, BuildingSnapshot> byInstance)
+            Dictionary<int, BuildingSnapshot> byInstance,
+            BattleSimulationOptions options)
         {
             if (command.DataId <= 0)
             {
@@ -92,35 +208,205 @@ namespace ClashOfSL.BattleSim
 
             int classId = GlobalIdHelper.GetClassId(command.DataId);
 
-            if (classId == 500)
+            switch (classId)
             {
-                if (byInstance.TryGetValue(command.DataId, out BuildingSnapshot? snapshot))
-                {
-                    snapshot.Destroyed = true;
-                }
+                case 500:
+                    if (byInstance.TryGetValue(command.DataId, out BuildingSnapshot? snapshot))
+                    {
+                        DestroyBuilding(snapshot);
+                    }
 
-                return;
-            }
+                    return;
+                case 1:
+                    if (!buckets.TryGetValue(command.DataId, out List<BuildingSnapshot>? bucket))
+                    {
+                        return;
+                    }
 
-            if (classId != 1)
-            {
-                return;
-            }
+                    BuildingSnapshot? target = MatchBuilding(bucket, command.X, command.Y);
+                    if (target != null)
+                    {
+                        DestroyBuilding(target);
+                    }
 
-            if (!buckets.TryGetValue(command.DataId, out List<BuildingSnapshot>? bucket))
-            {
-                return;
-            }
+                    return;
+                case 4:
+                    TroopStats? stats = options.TroopStatsProvider?.GetTroopStats(command.DataId);
+                    if (stats == null)
+                    {
+                        return;
+                    }
 
-            BuildingSnapshot? target = MatchBuilding(bucket, command.X, command.Y);
-            if (target != null)
-            {
-                target.Destroyed = true;
+                    var troop = new TroopInstance(command.DataId, command.X, command.Y, stats);
+                    AcquireTarget(troop, snapshots, options);
+                    troops.Add(troop);
+
+                    return;
+                default:
+                    return;
             }
         }
 
-        static BuildingSnapshot? MatchBuilding(List<BuildingSnapshot> bucket, int x, int y)
+        static bool HasRemainingBuildings(List<BuildingSnapshot> snapshots)
         {
+            return snapshots.Any(b => !b.Destroyed);
+        }
+
+        static bool HasAliveTroops(List<TroopInstance> troops)
+        {
+            return troops.Any(t => t.IsAlive);
+        }
+
+        static void AcquireTarget(TroopInstance troop, List<BuildingSnapshot> snapshots, BattleSimulationOptions options)
+        {
+            if (troop == null)
+            {
+                return;
+            }
+
+            troop.Target = SelectTarget(troop, snapshots);
+
+            if (troop.Target != null)
+            {
+                double range = troop.Stats.AttackRange;
+                double distance = troop.DistanceTo(troop.Target);
+                double required = Math.Max(0, distance - range);
+                if (troop.Stats.MoveSpeed <= 0)
+                {
+                    troop.TravelTimeRemaining = 0;
+                }
+                else
+                {
+                    troop.TravelTimeRemaining = required / troop.Stats.MoveSpeed;
+                }
+            }
+            else
+            {
+                troop.TravelTimeRemaining = 0;
+            }
+        }
+
+        static BuildingSnapshot? SelectTarget(TroopInstance troop, List<BuildingSnapshot> snapshots)
+        {
+            var candidates = snapshots.Where(b => !b.Destroyed).ToList();
+            if (candidates.Count == 0)
+            {
+                return null;
+            }
+
+            IReadOnlyCollection<int> preferred = troop.Stats.PreferredTargetDataIds;
+            if (preferred.Count > 0)
+            {
+                var preferredCandidates = candidates
+                    .Where(b => preferred.Contains(b.DataId))
+                    .ToList();
+
+                if (preferredCandidates.Count > 0)
+                {
+                    candidates = preferredCandidates;
+                }
+            }
+
+            BuildingSnapshot? match = null;
+            double bestDistance = double.MaxValue;
+
+            foreach (BuildingSnapshot snapshot in candidates)
+            {
+                double distance = troop.DistanceSquaredTo(snapshot);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    match = snapshot;
+                }
+            }
+
+            return match;
+        }
+
+        static double TickTroops(
+            List<TroopInstance> troops,
+            List<BuildingSnapshot> buildings,
+            double availableSeconds,
+            BattleSimulationOptions options)
+        {
+            if (availableSeconds <= 1e-6)
+            {
+                return 0;
+            }
+
+            double elapsed = 0;
+            double step = Math.Max(1e-3, options.TickResolutionSeconds);
+
+            while (elapsed + 1e-6 < availableSeconds)
+            {
+                if (!HasAliveTroops(troops))
+                {
+                    break;
+                }
+
+                if (!HasRemainingBuildings(buildings))
+                {
+                    break;
+                }
+
+                double dt = Math.Min(step, availableSeconds - elapsed);
+
+                foreach (TroopInstance troop in troops)
+                {
+                    if (!troop.IsAlive)
+                    {
+                        continue;
+                    }
+
+                    if (troop.Target == null || troop.Target.Destroyed)
+                    {
+                        AcquireTarget(troop, buildings, options);
+                    }
+
+                    BuildingSnapshot? target = troop.Target;
+                    if (target == null)
+                    {
+                        continue;
+                    }
+
+                    double remainingSlice = dt;
+
+                    if (troop.TravelTimeRemaining > 0)
+                    {
+                        double travel = Math.Min(troop.TravelTimeRemaining, remainingSlice);
+                        troop.TravelTimeRemaining -= travel;
+                        remainingSlice -= travel;
+
+                        if (remainingSlice <= 1e-6)
+                        {
+                            continue;
+                        }
+                    }
+
+                    double multiplier = troop.GetDamageMultiplier(target.DataId);
+                    double damage = troop.Stats.DamagePerSecond * multiplier * remainingSlice;
+                    target.RemainingHitpoints -= damage;
+
+                    if (target.RemainingHitpoints <= 0)
+                    {
+                        DestroyBuilding(target);
+                        troop.Target = null;
+                    }
+                }
+
+                elapsed += dt;
+            }
+
+            return elapsed;
+        }
+
+        static BuildingSnapshot? MatchBuilding(List<BuildingSnapshot>? bucket, int x, int y)
+        {
+            if (bucket == null)
+            {
+                return null;
+            }
+
             BuildingSnapshot? match = null;
             int bestDistance = int.MaxValue;
 
@@ -150,7 +436,17 @@ namespace ClashOfSL.BattleSim
             return match;
         }
 
-        static BattleResult CreateResult(List<BuildingSnapshot> snapshots, double prepTime, double attackTime, double lastTick)
+        static void DestroyBuilding(BuildingSnapshot? snapshot)
+        {
+            if (snapshot == null)
+            {
+                return;
+            }
+
+            snapshot.Destroyed = true;
+        }
+
+        static BattleResult CreateResult(List<BuildingSnapshot> snapshots, double prepTime, double attackTime, int endTick)
         {
             int totalHitpoints = snapshots.Sum(b => b.Hitpoints);
             int destroyedHitpoints = snapshots.Where(b => b.Destroyed).Sum(b => b.Hitpoints);
@@ -184,13 +480,13 @@ namespace ClashOfSL.BattleSim
             battleTime = ClampInt(battleTime, 0, 180);
 
             return new BattleResult(
-                stars,
+                ClampInt(stars, 0, 3),
                 destruction,
                 townHallDestroyed,
                 battleTime,
                 prepTime < 0 ? 0 : prepTime,
                 attackTime,
-                (int)Math.Round(lastTick));
+                endTick);
         }
 
         static int ClampInt(int value, int min, int max)
@@ -218,6 +514,7 @@ namespace ClashOfSL.BattleSim
                 this.IsTownHall = definition.IsTownHall;
                 this.X = definition.X;
                 this.Y = definition.Y;
+                this.RemainingHitpoints = definition.Hitpoints;
             }
 
             internal int InstanceId { get; }
@@ -226,8 +523,60 @@ namespace ClashOfSL.BattleSim
             internal bool IsTownHall { get; }
             internal int X { get; }
             internal int Y { get; }
-            internal bool Destroyed { get; set; }
+            internal double RemainingHitpoints { get; set; }
+            internal bool Destroyed
+            {
+                get => this.destroyed;
+                set
+                {
+                    this.destroyed = value;
+                    if (value)
+                    {
+                        this.RemainingHitpoints = 0;
+                    }
+                }
+            }
             internal bool HasInstanceId => this.InstanceId > 0;
+
+            bool destroyed;
+        }
+
+        sealed class TroopInstance
+        {
+            internal TroopInstance(int dataId, int spawnX, int spawnY, TroopStats stats)
+            {
+                this.DataId = dataId;
+                this.SpawnX = spawnX;
+                this.SpawnY = spawnY;
+                this.Stats = stats ?? throw new ArgumentNullException(nameof(stats));
+                this.RemainingHitpoints = stats.Hitpoints;
+            }
+
+            internal int DataId { get; }
+            internal int SpawnX { get; }
+            internal int SpawnY { get; }
+            internal TroopStats Stats { get; }
+            internal BuildingSnapshot? Target { get; set; }
+            internal double RemainingHitpoints { get; set; }
+            internal double TravelTimeRemaining { get; set; }
+            internal bool IsAlive => this.RemainingHitpoints > 0;
+
+            internal double DistanceSquaredTo(BuildingSnapshot target)
+            {
+                int dx = target.X - this.SpawnX;
+                int dy = target.Y - this.SpawnY;
+                return (double)dx * dx + (double)dy * dy;
+            }
+
+            internal double DistanceTo(BuildingSnapshot target)
+            {
+                return Math.Sqrt(this.DistanceSquaredTo(target));
+            }
+
+            internal double GetDamageMultiplier(int buildingDataId)
+            {
+                return this.Stats.GetDamageMultiplier(buildingDataId);
+            }
         }
     }
 
@@ -239,12 +588,18 @@ namespace ClashOfSL.BattleSim
 
         public double AttackTime { get; set; } = 180;
 
+        public double TickResolutionSeconds { get; set; } = 0.25;
+
+        public ITroopStatsProvider? TroopStatsProvider { get; set; } = ClashOfSL.BattleSim.TroopStatsProvider.Null;
+
         internal BattleSimulationOptions Clone()
         {
             return new BattleSimulationOptions
             {
                 PreparationTime = this.PreparationTime,
-                AttackTime = this.AttackTime
+                AttackTime = this.AttackTime,
+                TickResolutionSeconds = this.TickResolutionSeconds,
+                TroopStatsProvider = this.TroopStatsProvider
             };
         }
     }
