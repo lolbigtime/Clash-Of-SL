@@ -79,3 +79,24 @@ After the script finishes you can build and launch the server with Mono:
 msbuild "Clash SL Server/Clash SL Server.csproj"
 mono "Clash SL Server/bin/Debug/Clash SL Server.exe"
 ```
+
+## Reinforcement learning friendly battle simulator
+
+If you only need the deterministic battle resolution logic for AI research you
+can use the standalone **BattleSim** library located under `BattleSim/`. The
+project targets .NET Standard 2.0 and packages the minimum set of types required
+to parse base layouts, replay command streams and score the outcome.
+
+```bash
+dotnet build BattleSim/ClashOfSL.BattleSim.csproj
+
+# Run the zero-dependency command line sample
+dotnet run --project BattleSim.Runner \
+  -- --layout BattleSim/Samples/layout.json \
+     --stats BattleSim/Samples/stats.json \
+     --commands BattleSim/Samples/commands.json
+```
+
+Refer to [`BattleSim/README.md`](BattleSim/README.md) for a quick-start guide,
+reinforcement learning integration examples, and instructions for publishing a
+self-contained executable.
