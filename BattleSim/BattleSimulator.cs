@@ -47,11 +47,6 @@ namespace ClashOfSL.BattleSim
                 ApplyCommand(command, buildingBuckets, buildingsByInstance);
             }
 
-            if (commandList.Count > 0)
-            {
-                AdvanceClock(ref preparationTime, ref attackTime, ref lastTick, commandList[^1].Tick, processed);
-            }
-
             return CreateResult(snapshots, preparationTime, attackTime, lastTick);
         }
 
