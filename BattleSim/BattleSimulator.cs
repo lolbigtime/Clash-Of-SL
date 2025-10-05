@@ -590,7 +590,7 @@ namespace ClashOfSL.BattleSim
 
         public double TickResolutionSeconds { get; set; } = 0.25;
 
-        public ITroopStatsProvider? TroopStatsProvider { get; set; } = TroopStatsProvider.Null;
+        public ITroopStatsProvider? TroopStatsProvider { get; set; } = ClashOfSL.BattleSim.TroopStatsProvider.Null;
 
         internal BattleSimulationOptions Clone()
         {
