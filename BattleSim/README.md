@@ -84,6 +84,33 @@ script. The sample sequence is also available as
 `BattleSim/Samples/user-commands.txt` so you can paste it directly into the
 prompt or adapt it for your own testing harness.
 
+### Sample data set
+
+All of the example files shipped under `BattleSim/Samples/` are intentionally
+minimal so you can understand what the simulator expects:
+
+- **Base layout (`layout.json`)** – a Town Hall and two auxiliary buildings are
+  clustered near the center of the 100×100 tile map alongside a builder hut
+  instance (`dataId: 500000001`). This mirrors the defensive footprint that the
+  bundled `commands.json` targets.
+- **Empty base (`layout-empty.json`)** – demonstrates the schema for a defender
+  with no structures at all. Running the simulator against this layout will
+  instantly yield a three-star, 100% result because there is nothing to destroy.
+- **Command streams** – multiple variants are included so you can validate your
+  integrations:
+  - `commands.json` replays the four-drop sequence that wipes out the sample
+    base.
+  - `commands-empty.json` is an empty array; it is useful for verifying that
+    your harness handles the “no actions issued” case.
+  - `commands-dragon-corner.json` contains a single troop placement at
+    coordinate `(0, 0)` using the global id for the basic dragon (`dataId:
+    4000000`). Because the pared-down simulator only tracks structural
+    destruction, this drop will not damage the sample base—it is provided purely
+    to show how a lone unit placement is expressed in JSON.
+
+Feel free to duplicate these files and tweak coordinates, tick timings or data
+ids to align them with your own scenarios.
+
 ## Reinforcement learning pipeline
 
 For large scale training it is often convenient to orchestrate multiple
