@@ -72,8 +72,8 @@ try
     }
 
     JObject layoutJson = JObject.Parse(File.ReadAllText(layoutPath));
-    IBuildingStatsProvider statsProvider = FileBuildingStatsProvider.Load(statsPath);
-    BattleLayout layout = BattleLayout.FromJson(layoutJson, statsProvider);
+    FileStatsRepository statsRepository = FileStatsRepository.Load(statsPath);
+    BattleLayout layout = BattleLayout.FromJson(layoutJson, statsRepository);
 
     IReadOnlyList<BattleCommand> commands = Array.Empty<BattleCommand>();
     if (interactive)
@@ -90,7 +90,9 @@ try
         commands = LoadCommands(commandsPath).ToList();
     }
 
-    var simulator = new BattleSimulator(layout);
+    var options = BattleSimulationOptions.Default;
+    options.TroopStatsProvider = statsRepository;
+    var simulator = new BattleSimulator(layout, options);
     BattleResult result = simulator.Run(commands);
 
     Console.WriteLine("Battle resolved successfully:\n");
@@ -149,6 +151,7 @@ static IReadOnlyList<BattleCommand> LoadCommandsInteractively(string? commandsPa
     Console.WriteLine("Enter one command per line using: <tick> <dataId> <x> <y>.");
     Console.WriteLine("Press ENTER on an empty line to finish.");
     Console.WriteLine("Type 'sample' to load the built-in sample sequence.");
+    Console.WriteLine();
     Console.WriteLine("Sample command: 63 1000001 56 38\n");
 
     while (true)
@@ -160,7 +163,8 @@ static IReadOnlyList<BattleCommand> LoadCommandsInteractively(string? commandsPa
             break;
         }
 
-        if (string.Equals(line.Trim(), "sample", StringComparison.OrdinalIgnoreCase))
+        string trimmed = line.Trim();
+        if (string.Equals(trimmed, "sample", StringComparison.OrdinalIgnoreCase))
         {
             commands.Clear();
             commands.AddRange(GetSampleCommands());
@@ -222,22 +226,24 @@ static void PrintUsage()
     Console.WriteLine("  BattleSim.Runner --layout <layout.json> --stats <stats.json> [--commands <commands.json>] [--interactive]\n");
     Console.WriteLine("Arguments:");
     Console.WriteLine("  --layout, -l    Path to the defender layout JSON payload.");
-    Console.WriteLine("  --stats,  -s    Building stats JSON file that provides hitpoints for each data id and level.");
+    Console.WriteLine("  --stats,  -s    Stats JSON file with building hitpoints.");
     Console.WriteLine("  --commands,-c   Optional command list JSON file to replay during the simulation.");
     Console.WriteLine("  --interactive,-i Run the interactive testing interface (ignore commands file).");
     Console.WriteLine("  --help,   -h    Display this help message.");
 }
 
-sealed class FileBuildingStatsProvider : IBuildingStatsProvider
+sealed class FileStatsRepository : IBuildingStatsProvider, ITroopStatsProvider
 {
-    readonly Dictionary<int, StatsEntry> entries;
+    readonly Dictionary<int, StatsEntry> buildingEntries;
+    readonly Dictionary<int, TroopStats> troopEntries;
 
-    FileBuildingStatsProvider(Dictionary<int, StatsEntry> entries)
+    FileStatsRepository(Dictionary<int, StatsEntry> buildingEntries, Dictionary<int, TroopStats> troopEntries)
     {
-        this.entries = entries;
+        this.buildingEntries = buildingEntries;
+        this.troopEntries = troopEntries;
     }
 
-    public static IBuildingStatsProvider Load(string path)
+    public static FileStatsRepository Load(string path)
     {
         string json = File.ReadAllText(path);
         JObject document = JObject.Parse(json);
@@ -246,7 +252,8 @@ sealed class FileBuildingStatsProvider : IBuildingStatsProvider
             throw new InvalidDataException("Stats file must contain a 'buildings' array.");
         }
 
-        var entries = new Dictionary<int, StatsEntry>();
+        var buildings = new Dictionary<int, StatsEntry>();
+        var troops = new Dictionary<int, TroopStats>();
         foreach (JToken token in array)
         {
             if (token is not JObject obj)
@@ -294,20 +301,63 @@ sealed class FileBuildingStatsProvider : IBuildingStatsProvider
                 }
             }
 
-            entries[dataId] = new StatsEntry(isTownHall, fallbackHitpoints, hitpointsByLevel);
+            buildings[dataId] = new StatsEntry(isTownHall, fallbackHitpoints, hitpointsByLevel);
         }
 
-        if (entries.Count == 0)
+        if (document["troops"] is JArray troopArray)
+        {
+            foreach (JToken token in troopArray)
+            {
+                if (token is not JObject obj)
+                {
+                    continue;
+                }
+
+                int dataId = obj.Value<int?>("dataId") ?? 0;
+                if (dataId <= 0)
+                {
+                    continue;
+                }
+
+                double hitpoints = obj.Value<double?>("hitpoints") ?? 0;
+                double damagePerSecond = obj.Value<double?>("damagePerSecond") ?? 0;
+                double moveSpeed = obj.Value<double?>("moveSpeed") ?? 0;
+                double attackRange = obj.Value<double?>("attackRange") ?? 0;
+                bool isFlying = obj.Value<bool?>("isFlying") ?? false;
+                double preferredMultiplier = obj.Value<double?>("preferredTargetMultiplier") ?? 1.0;
+
+                IEnumerable<int> preferredTargets = ParseIntArray(obj["preferredTargetDataIds"]);
+
+                if (hitpoints <= 0)
+                {
+                    continue;
+                }
+
+                var troopStats = new TroopStats(
+                    dataId,
+                    hitpoints,
+                    damagePerSecond,
+                    moveSpeed,
+                    attackRange,
+                    isFlying,
+                    preferredTargets,
+                    preferredMultiplier <= 0 ? 1.0 : preferredMultiplier);
+
+                troops[dataId] = troopStats;
+            }
+        }
+
+        if (buildings.Count == 0)
         {
             throw new InvalidDataException("Stats file did not contain any valid building entries.");
         }
 
-        return new FileBuildingStatsProvider(entries);
+        return new FileStatsRepository(buildings, troops);
     }
 
     public BuildingStats GetStats(int dataId, int level)
     {
-        if (!this.entries.TryGetValue(dataId, out StatsEntry? entry))
+        if (!this.buildingEntries.TryGetValue(dataId, out StatsEntry? entry))
         {
             throw new KeyNotFoundException($"Stats file is missing data id {dataId}.");
         }
@@ -325,6 +375,16 @@ sealed class FileBuildingStatsProvider : IBuildingStatsProvider
         throw new KeyNotFoundException($"Stats file does not provide hitpoints for data id {dataId} at level {level}.");
     }
 
+    public TroopStats? GetTroopStats(int dataId)
+    {
+        if (this.troopEntries.TryGetValue(dataId, out TroopStats? stats))
+        {
+            return stats;
+        }
+
+        return null;
+    }
+
     sealed class StatsEntry
     {
         public StatsEntry(bool isTownHall, int? defaultHitpoints, Dictionary<int, int> hitpointsByLevel)
@@ -339,5 +399,22 @@ sealed class FileBuildingStatsProvider : IBuildingStatsProvider
         public int? DefaultHitpoints { get; }
 
         public Dictionary<int, int> HitpointsByLevel { get; }
+    }
+}
+
+static IEnumerable<int> ParseIntArray(JToken? token)
+{
+    if (token is not JArray array)
+    {
+        yield break;
+    }
+
+    foreach (JToken element in array)
+    {
+        int value = element.Value<int?>() ?? 0;
+        if (value > 0)
+        {
+            yield return value;
+        }
     }
 }
